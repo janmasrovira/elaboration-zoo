@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 55a2d425c3aa19be1e03f859873f9a3f976ccba4a3902bc5edc301861c788568
+-- hash: 7f5ea7daf20f3d7ee6bcdd94d7476455c66e53afe5a6b6a720cebccc6ebb99b3
 
 name:           elabzoo-eval-closures-debruijn
 version:        0.1.0.0
@@ -22,6 +22,38 @@ source-repository head
   type: git
   location: https://github.com/AndrasKovacs/elaboration-zoo
 
+library
+  exposed-modules:
+      Main
+  other-modules:
+      Paths_elabzoo_eval_closures_debruijn
+  hs-source-dirs:
+      ./
+      src
+  default-extensions:
+      ApplicativeDo
+      DataKinds
+      DerivingStrategies
+      DerivingVia
+      GADTs
+      GeneralizedNewtypeDeriving
+      ImportQualifiedPost
+      LambdaCase
+      MultiWayIf
+      NoFieldSelectors
+      NoImplicitPrelude
+      OverloadedStrings
+      PatternSynonyms
+      QuasiQuotes
+      RecordWildCards
+      TemplateHaskell
+      TypeFamilyDependencies
+  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-missed-specialisations -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-kind-signatures -Wno-missing-safe-haskell-mode -Wno-missing-role-annotations -Wno-missing-poly-kind-signatures -Wno-safe -Wno-unsafe -Wno-unused-packages
+  build-depends:
+      base >=4.7 && <5
+    , megaparsec
+  default-language: GHC2021
+
 executable elabzoo-eval-closures-debruijn
   main-is: Main.hs
   other-modules:
@@ -29,10 +61,24 @@ executable elabzoo-eval-closures-debruijn
   hs-source-dirs:
       ./
   default-extensions:
+      ApplicativeDo
+      DataKinds
+      DerivingStrategies
       DerivingVia
+      GADTs
+      GeneralizedNewtypeDeriving
+      ImportQualifiedPost
       LambdaCase
-      Strict
-  ghc-options: -Wall -Wno-name-shadowing -Wno-missing-signatures -Wno-unused-do-bind -Wno-unused-matches -O
+      MultiWayIf
+      NoFieldSelectors
+      NoImplicitPrelude
+      OverloadedStrings
+      PatternSynonyms
+      QuasiQuotes
+      RecordWildCards
+      TemplateHaskell
+      TypeFamilyDependencies
+  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-missed-specialisations -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-kind-signatures -Wno-missing-safe-haskell-mode -Wno-missing-role-annotations -Wno-missing-poly-kind-signatures -Wno-safe -Wno-unsafe -Wno-unused-packages -O
   build-depends:
       base >=4.7 && <5
     , megaparsec
