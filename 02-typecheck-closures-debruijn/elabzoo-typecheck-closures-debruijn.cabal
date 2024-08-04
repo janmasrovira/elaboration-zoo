@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a4e98d21f95e87dd9d0f8ddd3ace72c2c6c17238387c5a19708a441398526382
+-- hash: 6b8c24fef6bea9eb5e68e53475ffe2925f5d73d74475a40bab4a3023cde9abc1
 
 name:           elabzoo-typecheck-closures-debruijn
 version:        0.1.0.0
@@ -22,6 +22,40 @@ source-repository head
   type: git
   location: https://github.com/AndrasKovacs/elaboration-zoo
 
+library
+  exposed-modules:
+      Main
+  other-modules:
+      Paths_elabzoo_typecheck_closures_debruijn
+  hs-source-dirs:
+      ./
+      src
+  default-extensions:
+      ApplicativeDo
+      DataKinds
+      DerivingStrategies
+      DerivingVia
+      GADTs
+      GeneralizedNewtypeDeriving
+      ImportQualifiedPost
+      LambdaCase
+      MultiWayIf
+      NoImplicitPrelude
+      OverloadedStrings
+      PatternSynonyms
+      QuasiQuotes
+      RecordWildCards
+      TemplateHaskell
+      TupleSections
+      TypeFamilyDependencies
+      ViewPatterns
+  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-missed-specialisations -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-kind-signatures -Wno-missing-safe-haskell-mode -Wno-missing-role-annotations -Wno-missing-poly-kind-signatures -Wno-safe -Wno-unsafe -Wno-unused-packages
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , megaparsec
+  default-language: GHC2021
+
 executable elabzoo-typecheck-closures-debruijn
   main-is: Main.hs
   other-modules:
@@ -29,17 +63,25 @@ executable elabzoo-typecheck-closures-debruijn
   hs-source-dirs:
       ./
   default-extensions:
+      ApplicativeDo
+      DataKinds
+      DerivingStrategies
+      DerivingVia
+      GADTs
+      GeneralizedNewtypeDeriving
+      ImportQualifiedPost
       LambdaCase
-      NoMonomorphismRestriction
+      MultiWayIf
+      NoImplicitPrelude
       OverloadedStrings
       PatternSynonyms
+      QuasiQuotes
       RecordWildCards
-      StandaloneDeriving
-      Strict
+      TemplateHaskell
       TupleSections
-      DerivingVia
+      TypeFamilyDependencies
       ViewPatterns
-  ghc-options: -Wall -Wno-name-shadowing -Wno-missing-signatures -Wno-unused-do-bind -Wno-unused-matches -O
+  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-missed-specialisations -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-kind-signatures -Wno-missing-safe-haskell-mode -Wno-missing-role-annotations -Wno-missing-poly-kind-signatures -Wno-safe -Wno-unsafe -Wno-unused-packages -O
   build-depends:
       base >=4.7 && <5
     , containers

@@ -11,23 +11,38 @@ category:            Language
 description:         "Small implementations of elaborators for type theories, with varying complexity and feature set"
 
 default-extensions:
+- ApplicativeDo
+- DataKinds
+- DerivingStrategies
+- DerivingVia
+- GADTs
+- GeneralizedNewtypeDeriving
+- ImportQualifiedPost
 - LambdaCase
-- NoMonomorphismRestriction
+- MultiWayIf
+- NoImplicitPrelude
 - OverloadedStrings
 - PatternSynonyms
+- QuasiQuotes
 - RecordWildCards
-- StandaloneDeriving
-- Strict
+- TemplateHaskell
 - TupleSections
-- DerivingVia
+- TypeFamilyDependencies
 - ViewPatterns
 
 ghc-options:
-- -Wall
-- -Wno-name-shadowing
-- -Wno-missing-signatures
-- -Wno-unused-do-bind
-- -Wno-unused-matches
+- -Weverything
+- -Wno-all-missed-specialisations
+- -Wno-missed-specialisations
+- -Wno-missing-export-lists
+- -Wno-missing-import-lists
+- -Wno-missing-kind-signatures
+- -Wno-missing-safe-haskell-mode
+- -Wno-missing-role-annotations
+- -Wno-missing-poly-kind-signatures
+- -Wno-safe
+- -Wno-unsafe
+- -Wno-unused-packages
 
 dependencies:
 - base >= 4.7 && < 5
@@ -35,6 +50,11 @@ dependencies:
 - megaparsec
 
 source-dirs: .
+
+library:
+  source-dirs: src
+  verbatim:
+    default-language: GHC2021
 
 executable:
   main: Main.hs

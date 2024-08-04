@@ -54,14 +54,14 @@ lookup e n = case e of
    | otherwise -> lookup env (n - 1)
   Nil -> error "index out of scope"
 
-cApp :: Closure -> Val -> Val
-cApp (Closure env t) u = eval (Define env u) t
+applyClosure :: Closure -> Val -> Val
+applyClosure (Closure env t) u = eval (Define env u) t
 
 eval :: Env -> Tm -> Val
 eval env = \case
   Var x -> lookup env x
   App t u -> case (eval env t, eval env u) of -- eval-apply
-    (VLam t', u') -> cApp t' u'
+    (VLam t', u') -> applyClosure t' u'
     (t', u') -> VApp t' u'
   Lam t -> VLam (Closure env t)
   Let t u -> eval (Define env (eval env t)) u
@@ -69,17 +69,20 @@ eval env = \case
 -- Normalization
 --------------------------------------------------------------------------------
 
-lvl2Ix :: Lvl -> Lvl -> Ix
-lvl2Ix (Lvl l) (Lvl x) = Ix (l - x - 1)
+lvlToIx :: Lvl -> Lvl -> Ix
+lvlToIx (Lvl l) (Lvl x) = Ix (l - x - 1)
 
-quote :: Lvl -> Val -> Tm -- normalization-by-evaulation
+ -- normalization-by-evaulation
+quote :: Lvl -> Val -> Tm
 quote l = \case
-  VVar x -> Var (lvl2Ix l x)
+  VVar x -> Var (lvlToIx l x)
   VApp t u -> App (quote l t) (quote l u)
-  VLam t -> Lam (quote (l + 1) (cApp t (VVar l)))
+  VLam closure -> Lam (quote (l + 1) (applyClosure closure (VVar l)))
 
 nf :: Env -> Tm -> Tm
-nf env t = quote (length env) (eval env t)
+nf env t =
+  let t' = eval env t
+  in quote (length env) t'
 
 -- ("\\" works for lambda as well)
 ex :: IO ()
