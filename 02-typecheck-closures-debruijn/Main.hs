@@ -99,15 +99,15 @@ data Term
 -- values
 ------------------------------------------------------------
 
-type Env = [Val]
+type Env = [Value]
 
 data Closure = Closure Env Term
 
-type ValueType = Val
+type ValueType = Value
 
-data Val
+data Value
   = VVar Lvl
-  | VApp Val Val
+  | VApp Value Value
   | VLam Name {-# UNPACK #-} !Closure
   | VPi Name ValueType {-# UNPACK #-} !Closure
   | VType
@@ -116,10 +116,10 @@ data Val
 
 infixl 8 $$
 
-($$) :: Closure -> Val -> Val
+($$) :: Closure -> Value -> Value
 ($$) (Closure env t) u = eval (u : env) t
 
-eval :: Env -> Term -> Val
+eval :: Env -> Term -> Value
 eval env = \case
   Var (Ix x) -> env !! x
   App t u -> case (eval env t, eval env u) of
@@ -133,7 +133,7 @@ eval env = \case
 lvl2Ix :: Lvl -> Lvl -> Ix
 lvl2Ix (Lvl l) (Lvl x) = Ix (l - x - 1)
 
-quote :: Lvl -> Val -> Term
+quote :: Lvl -> Value -> Term
 quote l = \case
   VVar x -> Var (lvl2Ix l x)
   VApp t u -> App (quote l t) (quote l u)
@@ -145,7 +145,7 @@ nf :: Env -> Term -> Term
 nf env t = quote (Lvl (length env)) (eval env t)
 
 -- | Beta-eta conversion checking. Precondition: both values have the same type.
-conv :: Lvl -> Val -> Val -> Bool
+conv :: Lvl -> Value -> Value -> Bool
 conv l t u = case (t, u) of
   (VType, VType) -> True
   (VPi _ a b, VPi _ a' b') ->
@@ -186,7 +186,7 @@ bind x a (Cxt env types l pos) =
   Cxt (VVar l : env) ((x, a) : types) (l + 1) pos
 
 -- | Extend Cxt with a definition.
-define :: Name -> Val -> ValueType -> Cxt -> Cxt
+define :: Name -> Value -> ValueType -> Cxt -> Cxt
 define x t a (Cxt env types l pos) =
   Cxt (t : env) ((x, a) : types) (l + 1) pos
 
@@ -196,7 +196,7 @@ type M = Either (String, SourcePos)
 report :: Cxt -> String -> M a
 report cxt msg = Left (msg, pos cxt)
 
-showVal :: Cxt -> Val -> String
+showVal :: Cxt -> Value -> String
 showVal cxt v = prettyTm 0 (map fst (types cxt)) (quote (lvl cxt) v) []
 
 -- bidirectional algorithm:
@@ -243,10 +243,11 @@ infer :: Cxt -> Raw -> M (Term, ValueType)
 infer cxt = \case
   RSrcPos pos t -> infer (cxt {pos = pos}) t
   RVar x -> do
-    let go i [] = report cxt ("variable out of scope: " ++ x)
-        go i ((x', a) : tys)
-          | x == x' = pure (Var i, a)
-          | otherwise = go (i + 1) tys
+    let go i = \case
+          [] -> report cxt ("variable out of scope: " ++ x)
+          (x', a) : tys
+            | x == x' -> pure (Var i, a)
+            | otherwise -> go (i + 1) tys
     go 0 (types cxt)
   RU -> pure (Type, VType) -- Type : Type rule
   RApp t u -> do
