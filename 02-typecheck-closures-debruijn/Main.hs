@@ -25,10 +25,10 @@ ex0 :: IO ()
 ex0 =
   main' "nf" $
     unlines
-      [ "let id : (A : U) -> A -> A",
+      [ "let id : (A : Type) -> A -> A",
         "     = \\A x. x;",
-        "let foo : U = U;",
-        "let bar : U = id id;", -- we cannot apply any function to itself (already true in simple TT)
+        "let foo : Type = Type;",
+        "let bar : Type = id id;", -- we cannot apply any function to itself (already true in simple TT)
         "id"
       ]
 
@@ -37,11 +37,11 @@ ex1 :: IO ()
 ex1 =
   main' "nf" $
     unlines
-      [ "let id : (A : U) -> A -> A",
+      [ "let id : (A : Type) -> A -> A",
         "      = \\A x. x;",
-        "let const : (A B : U) -> A -> B -> A",
+        "let const : (A B : Type) -> A -> B -> A",
         "      = \\A B x y. x;",
-        "id ((A B : U) -> A -> B -> A) const"
+        "id ((A B : Type) -> A -> B -> A) const"
       ]
 
 -- Church-coded natural numbers (standard test for finding eval bugs)
@@ -49,7 +49,7 @@ ex2 :: IO ()
 ex2 =
   main' "nf" $
     unlines
-      [ "let Nat  : U = (N : U) -> (N -> N) -> N -> N;",
+      [ "let Nat  : Type = (N : Type) -> (N -> N) -> N -> N;",
         "let five : Nat = \\N s z. s (s (s (s (s z))));",
         "let add  : Nat -> Nat -> Nat = \\a b N s z. a N s (b N s z);",
         "let mul  : Nat -> Nat -> Nat = \\a b N s z. a N (b N s) z;",
@@ -79,7 +79,7 @@ data Raw
   = RVar Name -- x
   | RLam Name Raw -- \x. t
   | RApp Raw Raw -- t u
-  | RU -- U
+  | RU -- Type
   | RPi Name Raw Raw -- (x : A) -> B
   | RLet Name Raw Raw Raw -- let x : A = t; u
   | RSrcPos SourcePos Raw -- source position for error reporting
@@ -88,15 +88,13 @@ data Raw
 -- core syntax
 ------------------------------------------------------------
 
-type Type = Term
-
 data Term
   = Var Ix
   | Lam Name Term
   | App Term Term
-  | U
-  | Pi Name Type Type
-  | Let Name Type Term Term
+  | Type
+  | Pi Name Term Term
+  | Let Name Term Term Term
 
 -- values
 ------------------------------------------------------------
@@ -112,7 +110,7 @@ data Val
   | VApp Val Val
   | VLam Name {-# UNPACK #-} !Closure
   | VPi Name ValueType {-# UNPACK #-} !Closure
-  | VUniverse
+  | VType
 
 --------------------------------------------------------------------------------
 
@@ -130,7 +128,7 @@ eval env = \case
   Lam x t -> VLam x (Closure env t)
   Pi x a b -> VPi x (eval env a) (Closure env b)
   Let _ _ t u -> eval (eval env t : env) u
-  U -> VUniverse
+  Type -> VType
 
 lvl2Ix :: Lvl -> Lvl -> Ix
 lvl2Ix (Lvl l) (Lvl x) = Ix (l - x - 1)
@@ -141,7 +139,7 @@ quote l = \case
   VApp t u -> App (quote l t) (quote l u)
   VLam x t -> Lam x (quote (l + 1) (t $$ VVar l))
   VPi x a b -> Pi x (quote l a) (quote (l + 1) (b $$ VVar l))
-  VUniverse -> U
+  VType -> Type
 
 nf :: Env -> Term -> Term
 nf env t = quote (Lvl (length env)) (eval env t)
@@ -149,7 +147,7 @@ nf env t = quote (Lvl (length env)) (eval env t)
 -- | Beta-eta conversion checking. Precondition: both values have the same type.
 conv :: Lvl -> Val -> Val -> Bool
 conv l t u = case (t, u) of
-  (VUniverse, VUniverse) -> True
+  (VType, VType) -> True
   (VPi _ a b, VPi _ a' b') ->
     conv l a a'
       && conv (l + 1) (b $$ VVar l) (b' $$ VVar l)
@@ -220,7 +218,7 @@ check cxt ttop tytop = case (ttop, tytop) of
   -- fall-through checking
   (RLet var lty varBody body, a') -> do
     -- let x : lty = t in body
-    lty' <- check cxt lty VUniverse
+    lty' <- check cxt lty VType
     let valLty' = eval (env cxt) lty'
     varBody' <- check cxt varBody valLty'
     let varBodyVal' = eval (env cxt) varBody'
@@ -230,14 +228,14 @@ check cxt ttop tytop = case (ttop, tytop) of
   -- only Lam and Let is checkable
   -- if the term is not checkable, we switch to infer (change of direction)
   _ -> do
-    (ttop', tty) <- infer cxt ttop
-    unless (conv (lvl cxt) tty tytop) $
+    (ttop', inferredTy) <- infer cxt ttop
+    unless (conv (lvl cxt) inferredTy tytop) $
       report
         cxt
         ( printf
             "type mismatch\n\nexpected type:\n\n  %s\n\ninferred type:\n\n  %s\n"
             (showVal cxt tytop)
-            (showVal cxt tty)
+            (showVal cxt inferredTy)
         )
     return ttop'
 
@@ -250,7 +248,7 @@ infer cxt = \case
           | x == x' = pure (Var i, a)
           | otherwise = go (i + 1) tys
     go 0 (types cxt)
-  RU -> pure (U, VUniverse) -- U : U rule
+  RU -> pure (Type, VType) -- Type : Type rule
   RApp t u -> do
     (t, tty) <- infer cxt t
     case tty of
@@ -261,11 +259,11 @@ infer cxt = \case
         report cxt $ "Expected a function type, instead inferred:\n\n  " ++ showVal cxt tty
   RLam {} -> report cxt "Can't infer type for lambda expression"
   RPi x a b -> do
-    a <- check cxt a VUniverse
-    b <- check (bind x (eval (env cxt) a) cxt) b VUniverse
-    pure (Pi x a b, VUniverse)
+    a <- check cxt a VType
+    b <- check (bind x (eval (env cxt) a) cxt) b VType
+    pure (Pi x a b, VType)
   RLet x a t u -> do
-    a <- check cxt a VUniverse
+    a <- check cxt a VType
     let va = eval (env cxt) a
     t <- check cxt t va
     let vt = eval (env cxt) t
@@ -283,7 +281,7 @@ fresh ns = \case
     | otherwise -> x
 
 -- printing precedences
-atomp = 3 :: Int -- U, var
+atomp = 3 :: Int -- Type, var
 
 appp = 2 :: Int -- application
 
@@ -312,7 +310,7 @@ prettyTm prec = go prec
             (' ' :) . (x ++) . goLam (x : ns) t
           goLam ns t =
             (". " ++) . go letp ns t
-      U -> ("U" ++)
+      Type -> ("Type" ++)
       Pi "_" a b -> par p pip $ go appp ns a . (" → " ++) . go pip ("_" : ns) b
       Pi (fresh ns -> x) a b -> par p pip $ piBind ns x a . goPi (x : ns) b
         where
@@ -357,7 +355,7 @@ parens p = char '(' *> p <* char ')'
 pArrow = symbol "→" <|> symbol "->"
 
 keyword :: String -> Bool
-keyword x = x == "let" || x == "in" || x == "λ" || x == "U"
+keyword x = x == "let" || x == "in" || x == "λ" || x == "Type"
 
 pIdent :: Parser Name
 pIdent = try $ do
@@ -372,7 +370,7 @@ pKeyword kw = do
 
 pAtom :: Parser Raw
 pAtom =
-  withPos ((RVar <$> pIdent) <|> (RU <$ symbol "U"))
+  withPos ((RVar <$> pIdent) <|> (RU <$ symbol "Type"))
     <|> parens pRaw
 
 pBinder = pIdent <|> symbol "_"
