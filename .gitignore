@@ -7,3 +7,4 @@ TAGS
 .stack-work/
 *.lock
 /01-eval-closures-debruijn/Main
+/02-typecheck-closures-debruijn/Main

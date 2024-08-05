@@ -250,26 +250,26 @@ infer cxt = \case
             | otherwise -> go (i + 1) tys
     go 0 (types cxt)
   RU -> pure (Type, VType) -- Type : Type rule
-  RApp t u -> do
-    (t, tty) <- infer cxt t
-    case tty of
+  RApp appl appr -> do
+    (l', lty) <- infer cxt appl
+    case lty of
       VPi _ a b -> do
-        u <- check cxt u a
-        pure (App t u, b $$ eval (env cxt) u) -- t u : B[x |-> u]
+        appr' <- check cxt appr a
+        pure (App l' appr', b $$ eval (env cxt) appr') -- t u : B[x |-> u]
       tty ->
         report cxt $ "Expected a function type, instead inferred:\n\n  " ++ showVal cxt tty
   RLam {} -> report cxt "Can't infer type for lambda expression"
-  RPi x a b -> do
-    a <- check cxt a VType
-    b <- check (bind x (eval (env cxt) a) cxt) b VType
-    pure (Pi x a b, VType)
-  RLet x a t u -> do
-    a <- check cxt a VType
-    let va = eval (env cxt) a
-    t <- check cxt t va
+  RPi x pil pir -> do
+    pil' <- check cxt pil VType
+    pir' <- check (bind x (eval (env cxt) pil') cxt) pir VType
+    pure (Pi x pil' pir', VType)
+  RLet var varType varTerm body -> do
+    varType' <- check cxt varType VType
+    let valVarType = eval (env cxt) varType'
+    t <- check cxt varTerm valVarType
     let vt = eval (env cxt) t
-    (u, uty) <- infer (define x vt va cxt) u
-    pure (Let x a t u, uty)
+    (u, uty) <- infer (define var vt valVarType cxt) body
+    pure (Let var varType' t u, uty)
 
 -- printing
 --------------------------------------------------------------------------------
@@ -282,13 +282,17 @@ fresh ns = \case
     | otherwise -> x
 
 -- printing precedences
-atomp = 3 :: Int -- Type, var
+atomp :: Int
+atomp = 3 -- Type, var
 
-appp = 2 :: Int -- application
+appp :: Int
+appp = 2 -- application
 
-pip = 1 :: Int -- pi
+pip :: Int
+pip = 1 -- pi
 
-letp = 0 :: Int -- let, lambda
+letp :: Int
+letp = 0 -- let, lambda
 
 -- | Wrap in parens if expression precedence is lower than
 --   enclosing expression precedence.
@@ -301,36 +305,36 @@ prettyTm prec = go prec
     piBind ns x a =
       showParen True ((x ++) . (" : " ++) . go letp ns a)
 
+    goLam :: [Name] -> Term -> ShowS
+    goLam ns = \case
+      Lam (fresh ns -> x) t -> (' ' :) . (x ++) . goLam (x : ns) t
+      t -> (". " ++) . go letp ns t
+
+    goPi :: [Name] -> Term -> ShowS
+    goPi ns = \case
+      Pi "_" a b -> (" → " ++) . go appp ns a . (" → " ++) . go pip ("_" : ns) b
+      Pi (fresh ns -> x) a b -> piBind ns x a . goPi (x : ns) b
+      b -> (" → " ++) . go pip ns b
+
     go :: Int -> [Name] -> Term -> ShowS
-    go p ns = \case
-      Var (Ix x) -> ((ns !! x) ++)
-      App t u -> par p appp $ go appp ns t . (' ' :) . go atomp ns u
-      Lam (fresh ns -> x) t -> par p letp $ ("λ " ++) . (x ++) . goLam (x : ns) t
-        where
-          goLam ns (Lam (fresh ns -> x) t) =
-            (' ' :) . (x ++) . goLam (x : ns) t
-          goLam ns t =
-            (". " ++) . go letp ns t
+    go p goNames = \case
+      Var (Ix x) -> ((goNames !! x) ++)
+      App t u -> par p appp $ go appp goNames t . (' ' :) . go atomp goNames u
+      Lam (fresh goNames -> x) t -> par p letp $ ("λ " ++) . (x ++) . goLam (x : goNames) t
       Type -> ("Type" ++)
-      Pi "_" a b -> par p pip $ go appp ns a . (" → " ++) . go pip ("_" : ns) b
-      Pi (fresh ns -> x) a b -> par p pip $ piBind ns x a . goPi (x : ns) b
+      Pi "_" a b -> par p pip $ go appp goNames a . (" → " ++) . go pip ("_" : goNames) b
+      Pi (fresh goNames -> x) a b -> par p pip $ piBind goNames x a . goPi (x : goNames) b
         where
-          goPi ns (Pi "_" a b) =
-            (" → " ++) . go appp ns a . (" → " ++) . go pip ("_" : ns) b
-          goPi ns (Pi (fresh ns -> x) a b) =
-            piBind ns x a . goPi (x : ns) b
-          goPi ns b =
-            (" → " ++) . go pip ns b
-      Let (fresh ns -> x) a t u ->
+      Let (fresh goNames -> x) a t u ->
         par p letp $
           ("let " ++)
             . (x ++)
             . (" : " ++)
-            . go letp ns a
+            . go letp goNames a
             . ("\n    = " ++)
-            . go letp ns t
+            . go letp goNames t
             . ("\n;\n" ++)
-            . go letp (x : ns) u
+            . go letp (x : goNames) u
 
 instance Show Term where showsPrec p = prettyTm p []
 
@@ -345,14 +349,19 @@ ws = L.space C.space1 (L.skipLineComment "--") (L.skipBlockComment "{-" "-}")
 withPos :: Parser Raw -> Parser Raw
 withPos p = RSrcPos <$> getSourcePos <*> p
 
+lexeme :: Parser a -> Parser a
 lexeme = L.lexeme ws
 
+symbol :: String -> Parser String
 symbol s = lexeme (C.string s)
 
+char :: Char -> Parser Char
 char c = lexeme (C.char c)
 
+parens :: Parser a -> Parser a
 parens p = char '(' *> p <* char ')'
 
+pArrow ::Parser String
 pArrow = symbol "→" <|> symbol "->"
 
 keyword :: String -> Bool
@@ -366,7 +375,7 @@ pIdent = try $ do
 
 pKeyword :: String -> Parser ()
 pKeyword kw = do
-  C.string kw
+  void (C.string kw)
   (takeWhile1P Nothing isAlphaNum *> empty) <|> ws
 
 pAtom :: Parser Raw
@@ -374,10 +383,13 @@ pAtom =
   withPos ((RVar <$> pIdent) <|> (RU <$ symbol "Type"))
     <|> parens pRaw
 
+pBinder :: Parser Name
 pBinder = pIdent <|> symbol "_"
 
+pSpine :: Parser Raw
 pSpine = foldl1 RApp <$> some pAtom
 
+pLam :: Parser Raw
 pLam = do
   char 'λ' <|> char '\\'
   xs <- some pBinder
@@ -385,18 +397,21 @@ pLam = do
   t <- pRaw
   pure (foldr RLam t xs)
 
+pPi :: Parser Raw
 pPi = do
   dom <- some (parens ((,) <$> some pBinder <*> (char ':' *> pRaw)))
   pArrow
   cod <- pRaw
   pure $ foldr (\(xs, a) t -> foldr (\x -> RPi x a) t xs) cod dom
 
+funOrSpine :: Parser Raw
 funOrSpine = do
   sp <- pSpine
   optional pArrow >>= \case
     Nothing -> pure sp
     Just _ -> RPi "_" sp <$> pRaw
 
+pLet :: Parser Raw
 pLet = do
   pKeyword "let"
   x <- pBinder
@@ -408,8 +423,10 @@ pLet = do
   u <- pRaw
   pure $ RLet x a t u
 
+pRaw :: Parser Raw
 pRaw = withPos (pLam <|> pLet <|> try pPi <|> funOrSpine)
 
+pSrc :: Parser Raw
 pSrc = ws *> pRaw <* eof
 
 parseString :: String -> IO Raw
@@ -440,6 +457,7 @@ displayError file (msg, SourcePos path (unPos -> linum) (unPos -> colnum)) = do
   printf "%s | %s\n" lpad (replicate (colnum - 1) ' ' ++ "^")
   printf "%s\n" msg
 
+helpMsg :: String
 helpMsg =
   unlines
     [ "usage: elabzoo-typecheck-closures-debruijn [--help|nf|type]",
@@ -456,15 +474,15 @@ mainWith getOpt getRaw = do
       (t, file) <- getRaw
       case infer (emptyCxt (initialPos file)) t of
         Left err -> displayError file err
-        Right (t, a) -> do
-          print $ nf [] t
+        Right (term, ty) -> do
+          print $ nf [] term
           putStrLn "  :"
-          print $ quote 0 a
+          print $ quote 0 ty
     ["type"] -> do
       (t, file) <- getRaw
       case infer (emptyCxt (initialPos file)) t of
         Left err -> displayError file err
-        Right (t, a) -> print $ quote 0 a
+        Right (_, ty) -> print $ quote 0 ty
     _ -> putStrLn helpMsg
 
 main :: IO ()
