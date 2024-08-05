@@ -145,21 +145,33 @@ nf :: Env -> Term -> Term
 nf env t = quote (Lvl (length env)) (eval env t)
 
 -- | Beta-eta conversion checking. Precondition: both values have the same type.
-conv :: Lvl -> Value -> Value -> Bool
-conv l t u = case (t, u) of
+conversion :: Lvl -> Value -> Value -> Bool
+conversion l t u = case (t, u) of
   (VType, VType) -> True
   (VPi _ a b, VPi _ a' b') ->
-    conv l a a'
-      && conv (l + 1) (b $$ VVar l) (b' $$ VVar l)
+    conversion l a a'
+      && conversion (l + 1) (b $$ VVar l) (b' $$ VVar l)
   (VLam _ t1, VLam _ t2) ->
-    conv (l + 1) (t1 $$ VVar l) (t2 $$ VVar l)
+    conversion (l + 1) (t1 $$ VVar l) (t2 $$ VVar l)
   (VLam _ t', u') ->
-    conv (l + 1) (t' $$ VVar l) (VApp u' (VVar l))
+    conversion (l + 1) (t' $$ VVar l) (VApp u' (VVar l))
   (u', VLam _ t') ->
-    conv (l + 1) (VApp u' (VVar l)) (t' $$ VVar l)
+    conversion (l + 1) (VApp u' (VVar l)) (t' $$ VVar l)
   (VVar x, VVar x') -> x == x'
-  (VApp t1 u1, VApp t2 u2) -> conv l t1 t2 && conv l u1 u2
-  _ -> False
+  (VApp t1 u1, VApp t2 u2) -> conversion l t1 t2 && conversion l u1 u2
+  (VType, VVar {}) -> False
+  (VType, VApp {}) -> False
+  (VType, VPi {}) -> False
+  (VPi {}, VVar {}) -> False
+  (VPi {}, VApp {}) -> False
+  (VPi {}, VType {}) -> False
+  (VVar {}, VApp {}) -> False
+  (VVar {}, VPi {}) -> False
+  (VVar {}, VType {}) -> False
+  (VApp {}, VPi {}) -> False
+  (VApp {}, VType {}) -> False
+  (VApp {}, VVar {}) -> False
+  -- _ -> False
 
 -- Elaboration
 --------------------------------------------------------------------------------
@@ -182,13 +194,13 @@ emptyCxt = Cxt [] [] 0
 
 -- | Extend Cxt with a bound variable.
 bind :: Name -> ValueType -> Cxt -> Cxt
-bind x a (Cxt env types l pos) =
-  Cxt (VVar l : env) ((x, a) : types) (l + 1) pos
+bind var varTy (Cxt env types l pos) =
+  Cxt (VVar l : env) ((var, varTy) : types) (l + 1) pos
 
 -- | Extend Cxt with a definition.
 define :: Name -> Value -> ValueType -> Cxt -> Cxt
-define x t a (Cxt env types l pos) =
-  Cxt (t : env) ((x, a) : types) (l + 1) pos
+define var varDef varTy (Cxt env types l pos) =
+  Cxt (varDef : env) ((var, varTy) : types) (l + 1) pos
 
 -- | Typechecking monad. We annotate the error with the current source position.
 type M = Either (String, SourcePos)
@@ -229,7 +241,7 @@ check cxt ttop tytop = case (ttop, tytop) of
   -- if the term is not checkable, we switch to infer (change of direction)
   _ -> do
     (ttop', inferredTy) <- infer cxt ttop
-    unless (conv (lvl cxt) inferredTy tytop) $
+    unless (conversion (lvl cxt) inferredTy tytop) $
       report
         cxt
         ( printf

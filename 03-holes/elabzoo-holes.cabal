@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 125fbae02a111db0ba40542e256ab39e3760f03cad050a900ea53df357ba834c
+-- hash: d803ba3e151be2d6bc7c6e6df7b890e66423ad4c4cd3d0b1d5f41c7bd11967c4
 
 name:           elabzoo-holes
 version:        0.1.0.0
@@ -29,21 +29,26 @@ executable elabzoo-holes
   hs-source-dirs:
       ./
   default-extensions:
-      DerivingVia
+      ApplicativeDo
+      DataKinds
       DeriveAnyClass
-      DeriveFunctor
-      DeriveFoldable
-      DeriveTraversable
-      FlexibleContexts
+      DerivingStrategies
+      DerivingVia
+      GADTs
       GeneralizedNewtypeDeriving
+      ImportQualifiedPost
       LambdaCase
+      MultiWayIf
+      NoImplicitPrelude
       OverloadedStrings
       PatternSynonyms
-      StandaloneDeriving
-      Strict
+      QuasiQuotes
+      RecordWildCards
+      TemplateHaskell
       TupleSections
+      TypeFamilyDependencies
       ViewPatterns
-  ghc-options: -Wall -Wno-name-shadowing -Wno-missing-signatures -Wno-unused-do-bind -Wno-unused-matches -Wno-missing-pattern-synonym-signatures -O
+  ghc-options: -Weverything -Wno-all-missed-specialisations -Wno-missed-specialisations -Wno-missing-export-lists -Wno-missing-import-lists -Wno-missing-kind-signatures -Wno-missing-safe-haskell-mode -Wno-missing-role-annotations -Wno-missing-poly-kind-signatures -Wno-safe -Wno-unsafe -Wno-unused-packages -O
   build-depends:
       base >=4.7 && <5
     , containers

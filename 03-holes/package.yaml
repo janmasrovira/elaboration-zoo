@@ -11,28 +11,52 @@ category:            Language
 description:         "Small implementations of elaborators for type theories, with varying complexity and feature set"
 
 default-extensions:
-- DerivingVia
+- ApplicativeDo
+- DataKinds
 - DeriveAnyClass
-- DeriveFunctor
-- DeriveFoldable
-- DeriveTraversable
-- FlexibleContexts
+- DerivingStrategies
+- DerivingVia
+- GADTs
 - GeneralizedNewtypeDeriving
+- ImportQualifiedPost
 - LambdaCase
+- MultiWayIf
+- NoImplicitPrelude
 - OverloadedStrings
 - PatternSynonyms
-- StandaloneDeriving
-- Strict
+- QuasiQuotes
+- RecordWildCards
+- TemplateHaskell
 - TupleSections
+- TypeFamilyDependencies
 - ViewPatterns
+# - DerivingVia
+# - DeriveFunctor
+# - DeriveFoldable
+# - DeriveTraversable
+# - FlexibleContexts
+# - GeneralizedNewtypeDeriving
+# - LambdaCase
+# - OverloadedStrings
+# - PatternSynonyms
+# - StandaloneDeriving
+# - Strict
+# - TupleSections
+# - ViewPatterns
 
 ghc-options:
-- -Wall
-- -Wno-name-shadowing
-- -Wno-missing-signatures
-- -Wno-unused-do-bind
-- -Wno-unused-matches
-- -Wno-missing-pattern-synonym-signatures
+- -Weverything
+- -Wno-all-missed-specialisations
+- -Wno-missed-specialisations
+- -Wno-missing-export-lists
+- -Wno-missing-import-lists
+- -Wno-missing-kind-signatures
+- -Wno-missing-safe-haskell-mode
+- -Wno-missing-role-annotations
+- -Wno-missing-poly-kind-signatures
+- -Wno-safe
+- -Wno-unsafe
+- -Wno-unused-packages
 
 dependencies:
 - base >= 4.7 && < 5
